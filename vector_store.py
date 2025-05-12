@@ -1,99 +1,97 @@
 import os
 import numpy as np
 import pandas as pd
+import sqlite3
 from sentence_transformers import SentenceTransformer
 import chromadb
-from chromadb.config import Settings
-from utils import clean_text
+from more_itertools import batched
+from utils import clean_text, remove_stopwords
+
 
 class VectorStore:
     def __init__(
             self, 
+            db_path: str = "./transactions.db",
             persist_dir: str = "./chroma_store", 
             collection_name: str = "transactions",
-            embeddings: str = "data_embeddings.npy"
         ):
-        self.client = chromadb.Client(Settings(persist_directory=persist_dir))
+        self.client = chromadb.PersistentClient(path=persist_dir)
         self.collection = self.client.get_or_create_collection(collection_name)
         self.model = SentenceTransformer("all-MiniLM-L6-v2")
-        self.embeddings_path = embeddings
+        self.db_path = db_path
     
-    def load_data(self, file_path: str):
+    def load_data(self, file_path: str, embeddings_path: str = "data_embeddings.npy"):
         df = pd.read_csv(file_path)
-        df['cat'] = df['cat'].fillna('Uncategorized')
-        df['merchant'] = df['merchant'].fillna('')
-        df = df.dropna(subset=['clnt_id', 'desc']).copy()
+        df["uid"] = df.index
+        df['merchant'] = df.merchant.fillna('')
+        df['desc'] = df.desc.fillna('')
+        df['combined'] = df.apply(lambda row: clean_text(row["desc"]) + " " + clean_text(row["merchant"]), axis=1)
+        df = df.drop_duplicates(subset=['combined'])
+        texts = df['combined'].tolist()
+        ids = df['uid'].astype(str).tolist()
+        metadatas = [{"client_id": clnt} for clnt in df["clnt_id"]]
 
-        df['combined'] = df.apply(lambda row: clean_text(str(row['desc'])) + ' ' + clean_text(str(row['merchant'])), axis=1)
-        self.full_df = df  
-        df = df.drop_duplicates(subset=['clnt_id', 'combined']).reset_index(drop=True)
-
-        self.df = df
-        self.docs = df['combined'].tolist()
-        self.ids = [str(i) for i in range(len(df))]
-        self.metadatas = df[['clnt_id', 'cat']].to_dict(orient='records')
-
-        if os.path.exists(self.embeddings_path):
-            self.embeddings = np.load(self.embeddings_path)
+        if os.path.exists(embeddings_path):
+            vectors = np.load(embeddings_path)
         else:
-            self.embeddings = self.model.encode(self.docs, show_progress_bar=True).astype(np.float32)
-            np.save(self.embeddings_path, self.embeddings)
+            vectors = self.model.encode(texts, normalize_embeddings=True, show_progress_bar=True).tolist()
+            np.save(embeddings_path, vectors)
         
-        self.batch_add_to_chroma_meta()
-
-        
-    def batch_add_to_chroma_meta(self, batch_size=1000):
-        for i in range(0, len(self.docs), batch_size):
+        for batch in batched(zip(ids, texts, vectors, metadatas), 500):
+            b_ids, b_docs, b_vecs, b_meta = zip(*batch)
             self.collection.add(
-                documents=self.docs[i:i+batch_size],
-                embeddings=self.embeddings[i:i+batch_size],
-                ids=self.ids[i:i+batch_size],
-                metadatas=self.metadatas[i:i+batch_size]
+                ids=list(b_ids),
+                documents=list(b_docs),
+                embeddings=list(b_vecs),
+                metadatas=list(b_meta)
             )
+
+    def get_vector_matched_uids(self, query: str, client_id: int, top_k: int = 100) -> list[int]:
+        """
+        Perform vector search for a given query and client_id.
+        Returns a list of matched uids (as integers).
+        """
+        
+        # Encode the query
+        vector = self.model.encode([query], normalize_embeddings=True).tolist()
+
+        # Perform ChromaDB vector search with client_id filter
+        result = self.collection.query(
+            query_embeddings=vector,
+            n_results=top_k,
+            where={"client_id": client_id},
+            include=["documents"]
+        )
+
+        # Return list of matched uids as integers
+        return list(map(int, result["ids"][0]))
     
+    def get_unique_merchants_and_descriptions(self, query: str, client_id: int, top_k: int = 100) -> tuple[list[str], set[str]]:
+        """
+        Get unique merchants and descriptions from a list of uids.
+        """
+        query = remove_stopwords(query)
+        uids = self.get_vector_matched_uids(query, client_id, top_k)
+        if not uids:
+            return {"merchants": [], "descriptions": []}
+
+        placeholders = ",".join("?" for _ in uids)
+        conn = sqlite3.connect(self.db_path)
+
+        query = f"""
+            SELECT desc, merchant
+            FROM transactions
+            WHERE uid IN ({placeholders})
+        """
+        df = pd.read_sql_query(query, conn, params=uids)
+        conn.close()
+
+        merchants = df["merchant"].dropna().str.lower().str.strip().unique().tolist()
+        descriptions = df["desc"].dropna().apply(clean_text).str.lower().str.strip().unique().tolist()
+        description_keywords = set((" ".join(descriptions)).split())
+
+        return merchants, description_keywords
+
     def clear_collection(self):
         self.collection.delete()
-
-    def search(self, query: str, client_id: int, category: str, max_k: int = 5):
-        where = {'$and': [
-            {'clnt_id': {'$eq': client_id}},
-            {'cat': {'$eq': category}}]}
-
-        query_vec = self.model.encode([clean_text(query)]).tolist()
-        result = self.collection.query(
-            query_embeddings=query_vec,
-            n_results=max_k,
-            include=["documents"],
-            where=where
-        )
-
-        docs = set(result['documents'][0])
-        return self.full_df[(self.full_df['combined'].isin(docs)) & 
-                       (self.full_df['clnt_id'] == client_id) & 
-                       (self.full_df['cat'] == category)] 
-    
-    def semantic_search(self, query, client_id, category, threshold=0.75, max_k=500):
-        where = {'$and': [
-            {'clnt_id': {'$eq': int(client_id)}},
-            {'cat': {'$eq': category}}
-        ]}
-        query_vec = self.model.encode([clean_text(query)]).tolist()
-
-        result = self.collection.query(
-            query_embeddings=query_vec,
-            n_results=max_k,
-            include=["documents", "distances"],
-            where=where
-        )
-
-        filtered_docs = [
-            doc for doc, dist in zip(result["documents"][0], result["distances"][0])
-            if dist < (1 - threshold)
-        ]
-
-        return self.full_df[
-            (self.full_df["combined"].isin(filtered_docs)) &
-            (self.full_df["clnt_id"] == int(client_id)) &
-            (self.full_df["cat"] == category)
-        ]
 

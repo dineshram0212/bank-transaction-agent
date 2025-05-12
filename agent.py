@@ -1,112 +1,96 @@
 import json
-import datetime
-from tools_sample import TOOLS, get_transactions, aggregate_transactions
-from prompts import SYSTEM_PROMPT
+from prompts import system_prompt
+from tools import query_sql
+from tool_schema import TOOL_SCHEMA
 
-class ReactAgent:
-    def __init__(self, Model):
+
+class Agent:
+    def __init__(self, Model, VectorStore):
         self.client = Model.client
+        self.vector_store = VectorStore()
         self.model_name = Model.model_name
-        self.messages = []
         self.tools = {
-            "get_transactions": get_transactions,
-            "aggregate_transactions": aggregate_transactions
-        }
+            "query_sql": query_sql
+            }
+        self.top_k = 50
+        
 
-
-    def should_continue(self, context):
-        last_msg = context["messages"][-1]
-        print("Last Message: ", last_msg)
-        if isinstance(last_msg, dict) and last_msg["role"] == "function":
-            return "call_model"
-        if last_msg.tool_calls:
-            return "tools"
-        if last_msg.content:
-            return "end"
-        return "end"
-    
-
-    def call_model(self, context):
-        messages = context["messages"]
-
-        system_prompt = f"""
-                        Today is {datetime.datetime.now().strftime('%d %B %Y,  %I:%M %p')}.
-                        {SYSTEM_PROMPT}
-                        """
-
-        full_messages = [{"role": "system", "content": system_prompt}] + messages
-
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=full_messages,
-            temperature=0.6,
-            tools=TOOLS
-        )
+    def call_model(self, context, merchants, descriptions):
+        query = context["messages"]
+        messages = [{"role": "system", "content": system_prompt(merchants, descriptions)}] + query
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                temperature=0.6,
+                tools=TOOL_SCHEMA
+            )
+        except Exception as e:
+            context["messages"].append({"role": "assistant", "content": f"Model error: {e}"})
+            return context
 
         reply = response.choices[0].message
-        context["messages"].append(reply)
-        
         if reply.content and ("<tool_call" in reply.content or "<function" in reply.content):
             context["messages"].append({
                 "role": "assistant",
                 "content": "Error: Detected invalid manual tool call formatting. Please try rephrasing."
-                })
+            })
             return context
-
+        context["messages"].append(reply)
         return context
 
+    def should_continue(self, context):
+        last_msg = context["messages"][-1]
+        if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
+            return "tools"
+        if hasattr(last_msg, "role") and last_msg.role == "function":
+            return "call_model"
+        return "end"
+    
     def tool_node(self, context):
         last_msg = context["messages"][-1]
         if not hasattr(last_msg, "tool_calls"):
             return context
 
-        print("ToolCall: ", last_msg.tool_calls)
-        for tool_call in last_msg.tool_calls:
+        tool_calls = last_msg.tool_calls
+        for tool_call in tool_calls:
             tool_name = tool_call.function.name
             try:
-                args = json.loads(tool_call.function.arguments)
+                tool_args = json.loads(tool_call.function.arguments)
             except Exception as e:
-                print(f"[TOOL ERROR] {tool_name} failed: {e}")
-                context["messages"].append({
-                    "role": "function",
-                    "name": tool_name,
-                    "content": f"Tool argument parsing error: {e}"
-                })
+                context["messages"].append({"role": "function", "name": tool_name, "content": f"Tool error: {e}"})
                 continue
 
             tool_func = self.tools.get(tool_name)
             if tool_func:
                 try:
-                    result = tool_func(**args)
+                    result = tool_func(**tool_args)
                     context["messages"].append({"role": "function", "name": tool_name, "content": str(result)})
                 except Exception as e:
                     context["messages"].append({"role": "function", "name": tool_name, "content": f"Tool error: {e}"})
+            else:
+                context["messages"].append({"role": "function", "name": tool_name, "content": "Tool not found"})
         return context
     
-    def run(self, user_input):
-
+    def chat(self, query, client_id):
         context = {
             "messages": [],
             "state": "call_model",
         }
+        context["messages"].append({"role": "user", "content": query})
 
-        context["messages"].append({"role": "user", "content": user_input})
+        merchants, descriptions = self.vector_store.get_unique_merchants_and_descriptions(query, client_id, self.top_k)
 
         while context["state"] != "end":
             if context["state"] == "call_model":
-                context = self.call_model(context)
+                context = self.call_model(context, merchants, descriptions)
             elif context["state"] == "tools":
                 context = self.tool_node(context)
             else:
                 break
 
             context["state"] = self.should_continue(context)
-
+        
         last_msg = context["messages"][-1]
 
-        clean_messages = [
-            {"role": "user", "content": user_input},
-            {"role": last_msg.role,"content": last_msg.content.replace(SYSTEM_PROMPT, "")}
-            ]
-
-        return context["messages"][-1].content
+        return last_msg.content

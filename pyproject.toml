@@ -8,6 +8,7 @@ dependencies = [
     "chromadb>=1.0.8",
     "faiss-cpu>=1.11.0",
     "ipykernel>=6.29.5",
+    "more-itertools>=10.7.0",
     "openai>=1.77.0",
     "pandas>=2.2.3",
     "qdrant-client>=1.14.2",
