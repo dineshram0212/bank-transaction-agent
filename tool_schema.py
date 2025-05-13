@@ -7,10 +7,10 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "client_id": {
-                        "type": "string",
-                        "description": "The client ID for which to retrieve transactions."
-                    },
+                    # "client_id": {
+                    #     "type": "string",
+                    #     "description": "The client ID for which to retrieve transactions."
+                    # },
                     "start_date": {
                         "type": "string",
                         "format": "date",
@@ -63,7 +63,7 @@ TOOLS_SCHEMA = [
                         "description": "Limit the number of rows returned."
                     }
                     },
-                    "required": ["client_id", "aggregation"]
+                    "required": ["aggregation"]
                 }
         }
     }

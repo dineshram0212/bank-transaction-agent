@@ -70,7 +70,7 @@ def query_sql(
     return run_sql_query(sql_query)
 
 
-def run_sql_query(query: str, db_path="transactions.db") -> dict:
+def run_sql_query(query: str, db_path: str = "./data/transactions.db") -> dict:
     try:
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row

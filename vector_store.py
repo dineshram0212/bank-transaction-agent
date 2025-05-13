@@ -11,8 +11,8 @@ from utils import clean_text, remove_stopwords
 class VectorStore:
     def __init__(
             self, 
-            db_path: str = "./transactions.db",
-            persist_dir: str = "./chroma_store", 
+            db_path: str = "./data/transactions.db",
+            persist_dir: str = "./data/chroma_store", 
             collection_name: str = "transactions",
         ):
         self.client = chromadb.PersistentClient(path=persist_dir)

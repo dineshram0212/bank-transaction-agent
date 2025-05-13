@@ -13,7 +13,7 @@ class Agent:
             "query_sql": query_sql
             }
         self.top_k = 50
-        
+        self.history_limit = 20
 
     def call_model(self, context, merchants, descriptions, today):
         query = context["messages"]
@@ -41,7 +41,8 @@ class Agent:
 
     def should_continue(self, context):
         last_msg = context["messages"][-1]
-        print("Last Message: ", last_msg)
+        if isinstance(last_msg, dict) and "error" in last_msg.get("content"):
+            return "end"
         if isinstance(last_msg, dict) and last_msg["role"] == "function":
             return "call_model"
         if last_msg.tool_calls:
@@ -78,13 +79,12 @@ class Agent:
                 context["messages"].append({"role": "function", "name": tool_name, "content": "Tool not found"})
         return context
     
-    def chat(self, query, client_id, today):
+    def chat(self, query, message_history, client_id, today):
+        trimmed_history = [m for m in message_history if m["role"] in ["user", "assistant"]][-self.history_limit:]
         context = {
-            "messages": [],
+            "messages": trimmed_history + [{"role": "user", "content": query}],
             "state": "call_model",
         }
-        context["messages"].append({"role": "user", "content": query})
-
         merchants, descriptions = self.vector_store.get_unique_merchants_and_descriptions(query, client_id, self.top_k)
 
         while context["state"] != "end":
@@ -96,7 +96,6 @@ class Agent:
                 break
 
             context["state"] = self.should_continue(context)
-        
         content = context["messages"][-1].content
 
         return content
