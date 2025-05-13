@@ -10,6 +10,9 @@ def query_sql(
         group_by: list[str] = None,
         limit: int = None
 ) -> dict:
+    """
+    Builds query from the given parameters and query the database to return the results.
+    """
     allowed_columns = {
         "bank_id", "acc_id", "txn_id", "txn_date", "desc", "amt", "cat", "merchant"
     }
@@ -68,7 +71,10 @@ def query_sql(
     return run_sql_query(sql_query)
 
 
-def run_sql_query(query: str, db_path: str = "./data/transactions.db") -> dict:
+def run_sql_query(query: str, db_path: str = "../data/transactions.db") -> dict:
+    """
+    Runs the given SQL query on the database and returns the results.
+    """
     try:
         import sqlite3
         conn = sqlite3.connect(db_path)
@@ -81,6 +87,9 @@ def run_sql_query(query: str, db_path: str = "./data/transactions.db") -> dict:
 
 
 def visualize_data(data: dict, chart_type: str, x: str, y: str, title: str = ""):
+    """
+    Visualizes the given data using the specified chart type.
+    """
     import pandas as pd
     import plotly.express as px
 
@@ -99,6 +108,7 @@ def visualize_data(data: dict, chart_type: str, x: str, y: str, title: str = "")
         return {"error": "DataFrame is empty."}
 
     cols = df.columns.tolist()
+    # If x and y values are not provided or invalid, use the first two columns
     if x not in cols:
         x = cols[0] if len(cols) > 0 else None
     if y not in cols:

@@ -11,8 +11,8 @@ from utils import clean_text, remove_stopwords
 class VectorStore:
     def __init__(
             self, 
-            db_path: str = "./data/transactions.db",
-            persist_dir: str = "./data/chroma_store", 
+            db_path: str = "../data/transactions.db",
+            persist_dir: str = "../data/chroma_store", 
             collection_name: str = "transactions",
         ):
         self.client = chromadb.PersistentClient(path=persist_dir)
@@ -21,6 +21,9 @@ class VectorStore:
         self.db_path = db_path
     
     def load_data(self, file_path: str, embeddings_path: str = "data_embeddings.npy"):
+        """
+        Load data from a CSV file into a ChromaDB collection.
+        """
         df = pd.read_csv(file_path)
         df["uid"] = df.index
         df['merchant'] = df.merchant.fillna('')
@@ -48,14 +51,11 @@ class VectorStore:
 
     def get_vector_matched_uids(self, query: str, client_id: int, top_k: int = 100) -> list[int]:
         """
-        Perform vector search for a given query and client_id.
-        Returns a list of matched uids (as integers).
+        Get the uids of the transactions that match the query.
         """
         
-        # Encode the query
         vector = self.model.encode([query], normalize_embeddings=True).tolist()
 
-        # Perform ChromaDB vector search with client_id filter
         result = self.collection.query(
             query_embeddings=vector,
             n_results=top_k,
@@ -63,12 +63,11 @@ class VectorStore:
             include=["documents"]
         )
 
-        # Return list of matched uids as integers
         return list(map(int, result["ids"][0]))
     
     def get_unique_merchants_and_descriptions(self, query: str, client_id: int, top_k: int = 100) -> tuple[list[str], set[str]]:
         """
-        Get unique merchants and descriptions from a list of uids.
+        Returns a list of unique merchants and descriptions keywords from the transactions that match the query.
         """
         query = remove_stopwords(query)
         uids = self.get_vector_matched_uids(query, client_id, top_k)

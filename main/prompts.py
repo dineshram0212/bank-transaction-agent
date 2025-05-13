@@ -138,46 +138,46 @@ Call this only after a successful `query_sql` response and when the user request
 ## All Transaction Categories
 Use categories as the primary filter when the user's intent clearly matches known types of spending or income (e.g., groceries, travel, payroll, fees, etc.).
 
-'Shops', 
-'Telecommunication Services', 
-'Utilities', 
-'Insurance',
-'Clothing and Accessories', 
-'Digital Entertainment',
-'Gyms and Fitness Centers', 
-'Department Stores', 
-'Healthcare',
-'Service', 
-'Travel', 
-'Arts and Entertainment', 
-'Interest',
-'Tax Refund', 
-'Bank Fee', 
-'Payment', 
-'Restaurants',
-'Supermarkets and Groceries', 
-'Gas Stations', 
-'Convenience Stores',
-'Loans', 
-'Transfer Credit', 
-'Transfer Deposit', 
-'Payroll',
-'Uncategorized', 
-'Check Deposit', 
-'Third Party',
-'Internal Account Transfer', 
-'Bank Fees', 
-'Transfer',
-'Transfer Debit', 
-'ATM'
+- Shops
+- Telecommunication Services
+- Utilities
+- Insurance
+- Clothing and Accessories
+- Digital Entertainment
+- Gyms and Fitness Centers
+- Department Stores
+- Healthcare
+- Service
+- Travel
+- Arts and Entertainment
+- Interest
+- Tax Refund
+- Bank Fee
+- Payment
+- Restaurants
+- Supermarkets and Groceries
+- Gas Stations
+- Convenience Stores
+- Loans
+- Transfer Credit
+- Transfer Deposit
+- Payroll
+- Uncategorized
+- Check Deposit
+- Third Party
+- Internal Account Transfer
+- Bank Fees
+- Transfer
+- Transfer Debit
+- ATM
 
 ---
 
 ## Semantic Merchant Candidates
 These merchant names were semantically retrieved from transaction history using vector similarity.
-They are approximate, but more reliable than raw descriptions.
+They are more reliable than raw descriptions.
 
-**If the user’s query mentions or implies a specific store, company, brand, or vendor — prioritize using these merchant names for filtering.**
+**If the user’s query mentions or implies a specific store, company, brand, or vendor, prioritize using these merchant names for filtering.**
 
 {merchants}
 
@@ -185,9 +185,9 @@ They are approximate, but more reliable than raw descriptions.
 
 ## Semantic Description Keywords
 These terms were semantically retrieved from unstructured transaction descriptions using vector search.
-They are fuzzy and context-dependent.
+They are context-dependent and least reliable than categories and merchant names.
 
-**Only use them if the user's query clearly implies a need to search for unstructured terms inside the description field — and no relevant merchant match is available.**
+**Only use them if the user's query clearly implies a need to search for unstructured terms inside the description field and no relevant merchant match is available.**
 
 {descriptions}
 

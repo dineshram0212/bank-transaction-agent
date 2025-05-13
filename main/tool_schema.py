@@ -3,7 +3,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "query_sql",
-            "description": "Generates a SQL query to retrieve transaction summaries or aggregations for a specific client.",
+            "description": "Generates a SQL query to retrieve transaction summaries or aggregations based on the user's query.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -68,13 +68,14 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "visualize_data",
-            "description": "Generate a visualization based on structured transaction results.",
+            "description": "Generate a visualization based on extracted structured transaction results.",
             "parameters": {
             "type": "object",
             "properties": {
                 "chart_type": {
                 "type": "string",
-                "enum": ["pie", "bar", "line", "area", "calendar"]
+                "enum": ["pie", "bar", "line", "area", "calendar"],
+                "description": "The type of chart to generate."
                 },
                 "x": {
                 "type": "string",

@@ -5,7 +5,7 @@ from agent import Agent
 from model import Model
 from vector_store import VectorStore
 
-if "LLM_API_KEY" not in os.environ:
+if not os.getenv("LLM_API_KEY"):
     st.error(
         "Missing API Key!\n\n"
         "Create a `.env` file and add your Groq API key like this:\n\n"
