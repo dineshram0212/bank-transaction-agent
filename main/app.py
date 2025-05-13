@@ -1,9 +1,12 @@
 import os
+from dotenv import load_dotenv
 import streamlit as st
 from datetime import date
 from agent import Agent
 from model import Model
 from vector_store import VectorStore
+
+load_dotenv()
 
 if not os.getenv("LLM_API_KEY"):
     st.error(
