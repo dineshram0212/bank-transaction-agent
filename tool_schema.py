@@ -7,10 +7,6 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    # "client_id": {
-                    #     "type": "string",
-                    #     "description": "The client ID for which to retrieve transactions."
-                    # },
                     "start_date": {
                         "type": "string",
                         "format": "date",
@@ -65,6 +61,36 @@ TOOLS_SCHEMA = [
                     },
                     "required": ["aggregation"]
                 }
+        }
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "visualize_data",
+            "description": "Generate a visualization based on structured transaction results.",
+            "parameters": {
+            "type": "object",
+            "properties": {
+                "chart_type": {
+                "type": "string",
+                "enum": ["pie", "bar", "line", "area", "calendar"]
+                },
+                "x": {
+                "type": "string",
+                "description": "Field to use on X-axis"
+                },
+                "y": {
+                "type": "string",
+                "description": "Field to use on Y-axis"
+                },
+                "title": {
+                "type": "string",
+                "description": "Title of the chart"
+                }
+            },
+            "required": ["chart_type", "x", "y"]
+            }
         }
     }
 ]

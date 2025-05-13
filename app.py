@@ -5,29 +5,45 @@ from agent import Agent
 from model import Model
 from vector_store import VectorStore
 
+if "LLM_API_KEY" not in os.environ:
+    st.error(
+        "Missing API Key!\n\n"
+        "Create a `.env` file and add your Groq API key like this:\n\n"
+        "`LLM_API_KEY = <your-api-key>`"
+    )
+    st.stop()
+
 st.set_page_config(layout="wide")
 st.title("MoneyLion Bank Assistant")
 
+model_map = {
+    "Default (Llama 3.3 70b)": "llama-3.3-70b-versatile",
+    "Qwen qwq 32b": "qwen-qwq-32b",
+    "Mistral Saba 24b": "mistral-saba-24b",
+    "Llama 4 Maverick 17b": "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "Llama 4 Scout 17b": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "Llama 3.1 8b": "llama-3.1-8b-instant"
+}
+
 with st.sidebar:
-    st.header("Simulation Settings")
+    st.header("Simulated Settings")
     client_id = st.number_input("Enter Client ID", min_value=1, step=1)
     today_date = st.date_input("Select Today's Date", value=date.today())
     model_choice = st.selectbox(
     "Choose Model",
-    ["llama-3.3-70b-versatile(default)", "mistral-saba-24b", "llama3-70b-8192", "qwen-qwq-32b", "deepseek-r1-distill-llama-70b"],
+    [model for model in model_map.keys()],
     index=0
 )
 
+selected_model = model_map.get(model_choice, "llama-3.3-70b-versatile")
 
 if "agent" not in st.session_state:
-    selected_model = None if model_choice == "llama-3.3-70b-versatile(default)" else model_choice
-    st.session_state.agent = Agent(Model(selected_model), VectorStore())
-    
+    st.session_state.agent = Agent(Model(), VectorStore())
+
 agent = st.session_state.agent
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    
     
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
@@ -39,10 +55,14 @@ if prompt := st.chat_input("What do you want to know?"):
     with st.chat_message("user"):
         st.markdown(prompt)
         
-        response = agent.chat(prompt, st.session_state.messages, client_id, today_date)
+        response = agent.chat(prompt, client_id, today_date, st.session_state.messages, model_name=selected_model)
+        content = response["content"]
+        chart = response["chart"]
     
     with st.chat_message("assistant"):
-        st.markdown(response)
+        st.markdown(content)
+        if chart is not None:
+            st.plotly_chart(chart, use_container_width=True)
         
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    st.session_state.messages.append({"role": "assistant", "content": content})
         
