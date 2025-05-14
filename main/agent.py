@@ -4,7 +4,7 @@ from plotly.graph_objs import Figure
 from prompts import system_prompt
 from tools import query_sql, visualize_data
 from tool_schema import TOOLS_SCHEMA
-
+from utils import is_valid_client_id
 
 class Agent:
     def __init__(self, Model, VectorStore):
@@ -141,6 +141,8 @@ class Agent:
         """
         Main function to start the conversation.
         """
+        if not is_valid_client_id(client_id):
+            return {"content": "Client ID does not exist.", "chart": None}
         if message_history:
             trimmed_history = [m for m in message_history if m["role"] in ["user", "assistant"]][-self.history_limit:]
         else:
