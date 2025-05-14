@@ -1,6 +1,6 @@
 chromadb==1.0.9
 more_itertools==10.7.0
-numpy==2.2.5
+numpy
 openai==1.78.1
 pandas==2.2.3
 plotly==6.0.1

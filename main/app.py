@@ -47,13 +47,19 @@ agent = st.session_state.agent
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
+if "rendered_messages" not in st.session_state:
+    st.session_state.rendered_messages = []  
     
-for message in st.session_state.messages:
+for message in st.session_state.rendered_messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        if message.get("chart") is not None:
+            st.plotly_chart(message["chart"], use_container_width=True)
         
 if prompt := st.chat_input("What do you want to know?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.rendered_messages.append({"role": "user", "content": prompt})
     
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -68,4 +74,5 @@ if prompt := st.chat_input("What do you want to know?"):
             st.plotly_chart(chart, use_container_width=True)
         
     st.session_state.messages.append({"role": "assistant", "content": content})
+    st.session_state.rendered_messages.append({"role": "assistant", "content": content, "chart": chart})
         

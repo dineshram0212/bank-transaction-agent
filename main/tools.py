@@ -71,13 +71,17 @@ def query_sql(
     return run_sql_query(sql_query)
 
 
-def run_sql_query(query: str, db_path: str = "../data/transactions.db") -> dict:
+def run_sql_query(query: str, db_path: str = "data/transactions.db") -> dict:
     """
     Runs the given SQL query on the database and returns the results.
     """
     try:
+        import os
         import sqlite3
-        conn = sqlite3.connect(db_path)
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        full_db_path = os.path.join(root_dir, db_path)
+
+        conn = sqlite3.connect(full_db_path)
         conn.row_factory = sqlite3.Row
         cur = conn.execute(query)
         rows = [dict(r) for r in cur.fetchall()]

@@ -11,16 +11,19 @@ from utils import clean_text, remove_stopwords
 class VectorStore:
     def __init__(
             self, 
-            db_path: str = "../data/transactions.db",
-            persist_dir: str = "../data/chroma_store", 
+            db_path: str = "data/transactions.db",
+            persist_dir: str = "data/chroma_store", 
             collection_name: str = "transactions",
         ):
-        self.client = chromadb.PersistentClient(path=persist_dir)
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        self.db_path = os.path.join(root_dir, db_path)
+        self.persist_dir = os.path.join(root_dir, persist_dir)
+
+        self.client = chromadb.PersistentClient(path=self.persist_dir)
         self.collection = self.client.get_or_create_collection(collection_name)
         self.model = SentenceTransformer("all-MiniLM-L6-v2")
-        self.db_path = db_path
     
-    def load_data(self, file_path: str, embeddings_path: str = "data_embeddings.npy"):
+    def load_data(self, file_path: str, embeddings_path: str = "data/embeddings.npy"):
         """
         Load data from a CSV file into a ChromaDB collection.
         """

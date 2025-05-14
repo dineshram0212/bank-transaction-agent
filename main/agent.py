@@ -44,7 +44,7 @@ class Agent:
                 "content": "Error: Detected invalid manual tool call formatting. Please try rephrasing."
             })
             return context
-
+        print("Debug: ", reply)
         if reply.tool_calls:
             context["messages"].append({"role": reply.role, "tool_calls": [tc.model_dump() for tc in reply.tool_calls]})
         elif reply.content:
