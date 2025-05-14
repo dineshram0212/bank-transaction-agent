@@ -7,7 +7,7 @@ wheels/
 *.egg-info
 
 .venv
-
+.zip
 .env
 *.env
 *.npy
