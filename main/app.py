@@ -17,7 +17,7 @@ if not os.getenv("LLM_API_KEY"):
     st.stop()
 
 st.set_page_config(layout="wide")
-st.title("MoneyLion Bank Assistant")
+st.title("Bank Assistant")
 
 model_map = {
     "Default (Llama 3.3 70b)": "llama-3.3-70b-versatile",
